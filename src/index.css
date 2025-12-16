@@ -1,0 +1,26 @@
+input:placeholder-shown,
+textarea:placeholder-shown,
+.upload-signature {
+
+	animation-name: opacity;
+	animation-duration: 2s;
+	animation-iteration-count: infinite;
+}
+
+input::placeholder,
+textarea::placeholder {
+
+	color: inherit;
+}
+
+@keyframes opacity {
+	0% {
+		opacity: 100%;
+	}
+	50% {
+		opacity: 0;
+	}
+	100% {
+		opacity: 100%;
+	}
+}

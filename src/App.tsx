@@ -1,12 +1,12 @@
 import React, {useState, useEffect} from 'react';
-import moment from 'moment';
+import moment from 'moment/min/moment-with-locales';
 import _ from 'lodash';
-import 'moment/locale/fr';
+import './index.css';
 
 moment.locale('fr');
 
 const currentYear = new Date().getFullYear();
-const holydays = ['01-01', '05-01', '05-08', '07-14', '08-15', '11-01', '11-11', '12-25'];
+const holidays = ['01-01', '05-01', '05-08', '07-14', '08-15', '11-01', '11-11', '12-25'];
 
 interface ContactData {
 	company?: string;
@@ -52,7 +52,7 @@ const App: React.FC = () => {
 
 		while (date.isBefore(end)) {
 			data[date.format('YYYY-MM-DD')] =
-				[0, 6].includes(date.day()) || holydays.includes(date.format('MM-DD')) ? 0 : 1;
+				[0, 6].includes(date.day()) || holidays.includes(date.format('MM-DD')) ? 0 : 1;
 			date.add(1, 'day');
 		}
 
@@ -204,7 +204,20 @@ const App: React.FC = () => {
 								<div className="font-semibold text-blue-600">Signature</div>
 								<input type="file" className="absolute inset-0 opacity-0 cursor-pointer"
 									onChange={processSignature} />
-								{contactData.signature && <img src={contactData.signature} className="h-[70px] mt-2" />}
+								{
+									contactData.signature
+										? <img src={contactData.signature} className="h-[70px] mt-2" />
+										: <svg xmlns="http://www.w3.org/2000/svg"
+											fill="none"
+											viewBox="0 0 24 24"
+											strokeWidth={1.5}
+											stroke="currentColor"
+											className="size-6 ml-5 mt-5 upload-signature">
+											<path strokeLinecap="round"
+												strokeLinejoin="round"
+												d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+										</svg>
+								}
 							</div>
 						</div>
 					</div>
