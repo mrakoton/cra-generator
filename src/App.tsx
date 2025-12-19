@@ -133,6 +133,7 @@ const App = () => {
 						([['Reset', null], ['Tout vider', 0], ['Tout remplir', 1]] as [string, number | null][])
 							.map(([label, arg]) =>
 								<button className="cursor-pointer bg-indigo-100 rounded px-3 py-2 hover:bg-indigo-200"
+									key={label}
 									onClick={() => resetTimetable(arg)}>
 									{label}
 								</button>
@@ -306,8 +307,10 @@ const App = () => {
 												<input
 													type="number"
 													min={0}
+													key={k}
 													step={0.5}
 													className="w-full bg-transparent focus:outline-none"
+													onFocus={e => e.target.select()}
 													value={v}
 													onChange={e => updateTimetableEntry(k, e.target.value)}
 												/>
