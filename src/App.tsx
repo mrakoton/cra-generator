@@ -23,17 +23,49 @@ const print = async () => {
 	window.print();
 }
 
+const filterTimetableEntry = (v: string, trim = false) => {
+	v = v.replace(/[^0-9,.]/g, '')
+		.replace(',', '.')
+		.replace(/(\d\.?(\d{0,2})?).*/, '$1')
+
+	if (v.startsWith('.')) {
+		v = `0${v}`;
+	}
+
+	if (trim) {
+		v = v.replace(/\.$/, '').replace(/\.0+$/, '') || '0';
+	}
+
+	return v;
+}
+
 const App = () => {
 	const [month, setMonth] = useState<number>(moment().month() + 1);
 	const [year, setYear] = useState<number>(currentYear);
-	const [timeTable, setTimeTable] = useState<Record<string, number>>({});
+	const [timeTable, setTimeTable] = useState<Record<string, string>>({});
 	const [contactData, setContactData] = useState<ContactData>(
 		JSON.parse(localStorage.getItem('contactData') || '{}')
 	);
 
+	useEffect(() => {
+		try {
+			const tt = JSON.parse(localStorage.getItem(ttKey) || '{}');
+			if (Object.keys(tt).length) {
+				for (const k in tt) {
+					tt[k] = filterTimetableEntry(tt[k], true);
+				}
+				updateTimetable(tt);
+				return;
+			}
+		} catch {
+		}
+
+		initTimeTable();
+	}, [month, year]);
+
 	const ttKey = `tt-${month}-${year}`;
 
-	const updateTimetable = (data: Record<string, number>) => {
+	const updateTimetable = (data: Record<string, string>) => {
 		setTimeTable(data);
 		localStorage.setItem(ttKey, JSON.stringify(data));
 	};
@@ -44,26 +76,37 @@ const App = () => {
 		localStorage.setItem('contactData', JSON.stringify(newContactData));
 	};
 
-	const updateTimetableEntry = (k: string, v: string | number) => {
-		const n = parseFloat(String(v));
-		updateTimetable({...timeTable, [k]: isNaN(n) ? 0 : n});
+	const handleTimetableStep = (k: string, key: string) => {
+		if (['ArrowUp', 'ArrowDown'].includes(key)) {
+			let value = Number(timeTable[k] || 0);
+
+			if (!isNaN(value)) {
+				value += key === 'ArrowUp' ? 0.25 : -0.25;
+				updateTimetable({...timeTable, [k]: String(Math.max(0, value))});
+			}
+		}
+	};
+
+	const updateTimetableEntry = (k: string, v: string, trim = false) => {
+		updateTimetable({...timeTable, [k]: filterTimetableEntry(v, trim)});
 	};
 
 	const initTimeTable = () => {
 		const date = moment([year, month - 1]);
 		const end = date.clone().add(1, 'month');
-		const data: Record<string, number> = {};
+		const data: Record<string, string> = {};
 
 		while (date.isBefore(end)) {
-			data[date.format('YYYY-MM-DD')] =
-				[0, 6].includes(date.day()) || holidays.includes(date.format('MM-DD')) ? 0 : 1;
+			data[date.format('YYYY-MM-DD')] = String(
+				[0, 6].includes(date.day()) || holidays.includes(date.format('MM-DD')) ? 0 : 1
+			);
 			date.add(1, 'day');
 		}
 
 		updateTimetable(data);
 	};
 
-	const resetTimetable = (defaultValue: number | null = null) => {
+	const resetTimetable = (defaultValue: string | null = null) => {
 		if (defaultValue !== null) {
 			const newData = Object.fromEntries(Object.keys(timeTable).map(k => [k, defaultValue]));
 			updateTimetable(newData);
@@ -90,20 +133,20 @@ const App = () => {
 		reader.readAsDataURL(file);
 	};
 
-	useEffect(() => {
-		try {
-			const tt = JSON.parse(localStorage.getItem(ttKey) || '{}');
-			if (Object.keys(tt).length) {
-				updateTimetable(tt);
-				return;
-			}
-		} catch {
-		}
+	const totalDays = Object
+		.values(timeTable)
+		.reduce(
+			(acc, b) => {
+				const nVal = Number(b);
 
-		initTimeTable();
-	}, [month, year]);
+				if (!isNaN(nVal)) {
+					acc += nVal;
+				}
 
-	const totalDays = Object.values(timeTable).reduce((a, b) => a + b, 0);
+				return acc;
+			},
+			0
+		);
 
 	return (
 		<div className="max-w-6xl mx-auto px-4 py-4">
@@ -130,7 +173,7 @@ const App = () => {
 
 				<div className="ml-auto text-xs font-semibold text-indigo-500 space-x-2">
 					{
-						([['Reset', null], ['Tout vider', 0], ['Tout remplir', 1]] as [string, number | null][])
+						([['Reset', null], ['Tout vider', '0'], ['Tout remplir', '1']] as [string, string | null][])
 							.map(([label, arg]) =>
 								<button className="cursor-pointer bg-indigo-100 rounded px-3 py-2 hover:bg-indigo-200"
 									key={label}
@@ -148,7 +191,8 @@ const App = () => {
 							strokeWidth={1.5}
 							stroke="currentColor"
 							className="size-4 inline-block mr-1">
-							<path strokeLinecap="round" strokeLinejoin="round" d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0 1 10.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0 .229 2.523a1.125 1.125 0 0 1-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0 0 21 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 0 0-1.913-.247M6.34 18H5.25A2.25 2.25 0 0 1 3 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 0 1 1.913-.247m10.5 0a48.536 48.536 0 0 0-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5Zm-3 0h.008v.008H15V10.5Z" />
+							<path strokeLinecap="round" strokeLinejoin="round"
+								d="M6.72 13.829c-.24.03-.48.062-.72.096m.72-.096a42.415 42.415 0 0 1 10.56 0m-10.56 0L6.34 18m10.94-4.171c.24.03.48.062.72.096m-.72-.096L17.66 18m0 0 .229 2.523a1.125 1.125 0 0 1-1.12 1.227H7.231c-.662 0-1.18-.568-1.12-1.227L6.34 18m11.318 0h1.091A2.25 2.25 0 0 0 21 15.75V9.456c0-1.081-.768-2.015-1.837-2.175a48.055 48.055 0 0 0-1.913-.247M6.34 18H5.25A2.25 2.25 0 0 1 3 15.75V9.456c0-1.081.768-2.015 1.837-2.175a48.041 48.041 0 0 1 1.913-.247m10.5 0a48.536 48.536 0 0 0-10.5 0m10.5 0V3.375c0-.621-.504-1.125-1.125-1.125h-8.25c-.621 0-1.125.504-1.125 1.125v3.659M18 10.5h.008v.008H18V10.5Zm-3 0h.008v.008H15V10.5Z" />
 						</svg>
 
 						Télécharger
@@ -300,23 +344,24 @@ const App = () => {
 							<tbody>
 								{Object.entries(timeTable).map(([k, v]) => {
 									const d = moment(k);
-									return (
-										<tr key={k} className={v ? 'bg-blue-100' : 'bg-red-100'}>
-											<td className="p-1">{d.format('dddd')} <b>{d.format('DD')}</b></td>
-											<td className="p-1">
-												<input
-													type="number"
-													min={0}
-													key={k}
-													step={0.5}
-													className="w-full bg-transparent focus:outline-none"
-													onFocus={e => e.target.select()}
-													value={v}
-													onChange={e => updateTimetableEntry(k, e.target.value)}
-												/>
-											</td>
-										</tr>
-									);
+									return <tr key={k} className={Number(v) ? 'bg-blue-100' : 'bg-red-100'}
+										onClick={(e) => (e.currentTarget as HTMLElement)?.querySelector('input')?.focus()}>
+										<td className="p-1">{d.format('dddd')} <b>{d.format('DD')}</b></td>
+										<td className="p-1">
+											<input
+												id={`tt-${k}`}
+												type="text"
+												min={0}
+												key={k}
+												className="w-full bg-transparent focus:outline-none"
+												onFocus={e => e.target.select()}
+												value={v}
+												onKeyDown={e => handleTimetableStep(k, e.key)}
+												onBlur={e => updateTimetableEntry(k, e.target.value, true)}
+												onChange={e => updateTimetableEntry(k, e.target.value)}
+											/>
+										</td>
+									</tr>;
 								})}
 							</tbody>
 						</table>
